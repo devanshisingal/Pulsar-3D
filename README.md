@@ -59,7 +59,10 @@ g++ src/pulsarr.cpp src/glad.c \
 ---
 
 
+## 📸 Preview
+https://drive.google.com/file/d/1BrTnft1wZtWEl_noKw_NFsxj5k4XlCzQ/view?usp=sharing
 
+---
 ## 🎮 Controls
 
 | Key / Action | Function              |
