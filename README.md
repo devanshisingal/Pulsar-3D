@@ -32,7 +32,7 @@ This project simulates key astrophysical features like **radiation jets**, **mag
 
 ## 📸 Preview
 
-![Demo](screenshots/demo.png)
+
 <img width="1291" height="633" alt="image" src="https://github.com/user-attachments/assets/d020674f-0de8-4870-abeb-37014ac24ff4" />
 
 ---
