@@ -17,8 +17,7 @@ constexpr float kBaseRadiusEnd = 40.0f;
 constexpr float kSegmentLength = 10.0f;
 constexpr float kJetVelocity = 70.0f;
 
-glm::vec3 magneticField(glm::vec3 r) {
-    glm::vec3 m(0.0f, 1.0f, 0.0f);
+glm::vec3 magneticField(glm::vec3 r, const glm::vec3& m) {
     float rMag = glm::length(r);
     if (rMag < 1e-5f) {
         return glm::vec3(0.0f);
@@ -28,6 +27,11 @@ glm::vec3 magneticField(glm::vec3 r) {
     float r5 = powf(rMag, 5.0f);
     float r3 = powf(rMag, 3.0f);
     return r * (3.0f * rDotM / r5) - m * (1.0f / r3);
+}
+
+glm::vec3 buildMagneticAxis(float tiltDegrees) {
+    float tiltRadians = glm::radians(tiltDegrees);
+    return glm::normalize(glm::vec3(sinf(tiltRadians), cosf(tiltRadians), 0.0f));
 }
 
 }  // namespace
@@ -118,28 +122,34 @@ void FieldLines::clear() {
     counts.clear();
 }
 
-void FieldLines::build(float fieldStrength) {
+void FieldLines::build(float fieldStrength, float magneticAxisTiltDegrees) {
     clear();
     strength = fieldStrength;
+    magneticAxisTiltDeg = magneticAxisTiltDegrees;
     const int numLines = 8 + static_cast<int>(10.0f * strength);
     const float step = 0.05f + 0.08f * strength;
     const float maxDist = 400.0f + 850.0f * strength;
-    const float incAngle = glm::radians(30.0f);
+    const float seedAngle = glm::radians(30.0f);
+    const glm::vec3 dipoleAxis = buildMagneticAxis(magneticAxisTiltDeg);
+    glm::vec3 basis1 = glm::cross(dipoleAxis, glm::vec3(0.0f, 0.0f, 1.0f));
+    if (glm::dot(basis1, basis1) < 1e-6f) {
+        basis1 = glm::cross(dipoleAxis, glm::vec3(1.0f, 0.0f, 0.0f));
+    }
+    basis1 = glm::normalize(basis1);
+    glm::vec3 basis2 = glm::normalize(glm::cross(dipoleAxis, basis1));
 
     for (int i = 0; i < numLines; ++i) {
         float theta = static_cast<float>(i) / static_cast<float>(numLines) * glm::two_pi<float>();
-        glm::vec3 start(
-            sinf(incAngle) * cosf(theta),
-            cosf(incAngle),
-            sinf(incAngle) * sinf(theta)
-        );
-        start *= 0.5f;
+        glm::vec3 ringOffset =
+            basis1 * (sinf(seedAngle) * cosf(theta)) +
+            basis2 * (sinf(seedAngle) * sinf(theta));
+        glm::vec3 start = (dipoleAxis * cosf(seedAngle) + ringOffset) * 0.5f;
 
         std::vector<glm::vec3> pts;
         glm::vec3 pos = start;
         for (int j = 0; j < 1061; ++j) {
             pts.push_back(pos);
-            glm::vec3 b = glm::normalize(magneticField(pos));
+            glm::vec3 b = glm::normalize(magneticField(pos, dipoleAxis));
             pos += b * step;
             if (glm::length(pos) > maxDist) {
                 break;

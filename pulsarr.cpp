@@ -123,7 +123,7 @@ int main() {
     jet2.init(-1, rng);
 
     pulsar::FieldLines field;
-    field.build(app.fieldStrength);
+    field.build(app.fieldStrength, app.magneticAxisTiltDeg);
     pulsar::Grid grid;
     grid.build(30.0f, 50);
     pulsar::AxisArrows axis;
@@ -144,7 +144,7 @@ int main() {
         jet1.setDensity(app.jetDensity);
         jet2.setDensity(app.jetDensity);
         if (app.fieldDirty) {
-            field.build(app.fieldStrength);
+            field.build(app.fieldStrength, app.magneticAxisTiltDeg);
             app.fieldDirty = false;
         }
 
