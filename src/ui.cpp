@@ -46,6 +46,14 @@ void applySciencePreset(AppState& app, int presetIndex) {
     app.syncScienceState();
 }
 
+void DrawScienceHint(const char* text) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.58f, 0.68f, 1.0f));
+    ImGui::SetWindowFontScale(0.78f);
+    ImGui::TextWrapped("%s", text);
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::PopStyleColor();
+}
+
 AppState* getApp(GLFWwindow* window) {
     return static_cast<AppState*>(glfwGetWindowUserPointer(window));
 }
@@ -237,33 +245,39 @@ void drawImGuiPanel(AppState& app) {
         if (ImGui::Combo("Preset", &presetIndex, "Custom\0Crab Pulsar\0Vela Pulsar\0Millisecond\0Magnetar-like\0")) {
             applySciencePreset(app, presetIndex);
         }
+        DrawScienceHint("Preset: Load a known pulsar profile.");
 
         if (ImGui::SliderFloat("Spin Period (s)", &app.uiSpinPeriod, 0.005f, 8.0f, "%.3f")) {
             app.spinPeriod = app.uiSpinPeriod;
             app.presetIndex = 0;
         }
+        DrawScienceHint("Spin Period: Seconds per full rotation.");
 
         if (ImGui::SliderFloat("Magnetic Axis Tilt", &app.uiMagneticAxisTiltDeg, 0.0f, 100.0f, "%.0f deg")) {
             app.magneticAxisTiltDeg = app.uiMagneticAxisTiltDeg;
             app.presetIndex = 0;
             app.syncScienceState();
         }
+        DrawScienceHint("Magnetic Axis Tilt: Angle between spin and field.");
 
         if (ImGui::SliderFloat("Jet Density", &app.uiJetDensity, 0.25f, 1.5f, "%.2f")) {
             app.jetDensity = app.uiJetDensity;
             app.presetIndex = 0;
         }
+        DrawScienceHint("Jet Density: Controls rendered jet particle count.");
 
         if (ImGui::SliderFloat("Field Strength", &app.uiFieldStrength, 0.4f, 2.0f, "%.2f")) {
             app.fieldStrength = app.uiFieldStrength;
             app.presetIndex = 0;
             app.fieldDirty = true;
         }
+        DrawScienceHint("Field Strength: Scales field line reach.");
 
         if (ImGui::SliderFloat("Pulse Brightness", &app.uiPulseBrightness, 0.2f, 2.2f, "%.2f")) {
             app.pulseBrightness = app.uiPulseBrightness;
             app.presetIndex = 0;
         }
+        DrawScienceHint("Pulse Brightness: Boosts emissive pulse intensity.");
 
         ImGui::TextDisabled("Approx pulse freq: %.2f Hz", 1.0f / app.spinPeriod);
 
