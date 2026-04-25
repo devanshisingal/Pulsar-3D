@@ -37,6 +37,7 @@ void JetSystem::init(int dir, std::mt19937& rng) {
     std::uniform_real_distribution<float> randF(0.0f, 1.0f);
     data.resize(kNumParticles);
     positions.resize(kNumParticles * 6, 0.0f);
+    activeCount = kNumParticles;
 
     for (int i = 0; i < kNumParticles; ++i) {
         auto& p = data[i];
@@ -55,6 +56,11 @@ void JetSystem::init(int dir, std::mt19937& rng) {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
+}
+
+void JetSystem::setDensity(float value) {
+    density = value;
+    activeCount = glm::clamp(static_cast<int>(kNumParticles * density), 250, kNumParticles);
 }
 
 void JetSystem::fillSegment(int i) {
@@ -76,7 +82,7 @@ void JetSystem::fillSegment(int i) {
 }
 
 void JetSystem::update(float deltaTime) {
-    for (int i = 0; i < kNumParticles; ++i) {
+    for (int i = 0; i < activeCount; ++i) {
         auto& p = data[i];
         p.altura += p.velocidade * deltaTime;
         if (p.altura > kConeHeight) {
@@ -86,7 +92,7 @@ void JetSystem::update(float deltaTime) {
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
+    glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(activeCount * 6 * sizeof(float)), positions.data());
 }
 
 void JetSystem::draw(GLuint program, const glm::mat4& model, const glm::mat4& view, const glm::mat4& proj) const {
@@ -94,16 +100,30 @@ void JetSystem::draw(GLuint program, const glm::mat4& model, const glm::mat4& vi
     glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
-    glUniform4f(glGetUniformLocation(program, "lineColor"), 0.98f, 0.93f, 0.23f, 1.0f);
+    glUniform4f(glGetUniformLocation(program, "lineColor"), 0.98f, 0.93f, 0.23f, 0.35f + 0.65f * density);
     glBindVertexArray(vao);
-    glDrawArrays(GL_LINES, 0, kNumParticles * 2);
+    glDrawArrays(GL_LINES, 0, activeCount * 2);
     glBindVertexArray(0);
 }
 
-void FieldLines::build() {
-    const int numLines = 10;
-    const float step = 0.1f;
-    const float maxDist = 1060.0f;
+void FieldLines::clear() {
+    if (!vaos.empty()) {
+        glDeleteVertexArrays(static_cast<GLsizei>(vaos.size()), vaos.data());
+    }
+    if (!vbos.empty()) {
+        glDeleteBuffers(static_cast<GLsizei>(vbos.size()), vbos.data());
+    }
+    vaos.clear();
+    vbos.clear();
+    counts.clear();
+}
+
+void FieldLines::build(float fieldStrength) {
+    clear();
+    strength = fieldStrength;
+    const int numLines = 8 + static_cast<int>(10.0f * strength);
+    const float step = 0.05f + 0.08f * strength;
+    const float maxDist = 400.0f + 850.0f * strength;
     const float incAngle = glm::radians(30.0f);
 
     for (int i = 0; i < numLines; ++i) {
@@ -148,7 +168,13 @@ void FieldLines::draw(GLuint program, const glm::mat4& model, const glm::mat4& v
     glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
-    glUniform4f(glGetUniformLocation(program, "lineColor"), 0.49f, 0.84f, 1.0f, 0.8f);
+    glUniform4f(
+        glGetUniformLocation(program, "lineColor"),
+        0.35f + 0.16f * strength,
+        0.72f + 0.12f * strength,
+        0.95f + 0.05f * strength,
+        0.45f + 0.35f * strength
+    );
 
     for (std::size_t i = 0; i < vaos.size(); ++i) {
         glBindVertexArray(vaos[i]);

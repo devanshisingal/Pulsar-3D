@@ -12,6 +12,40 @@ namespace pulsar {
 
 namespace {
 
+struct SciencePreset {
+    const char* name;
+    float spinPeriod;
+    float magneticAxisTiltDeg;
+    float jetDensity;
+    float fieldStrength;
+    float pulseBrightness;
+};
+
+constexpr SciencePreset kSciencePresets[] = {
+    {"Custom", 2.2f, 0.0f, 1.0f, 1.0f, 1.0f},
+    {"Crab Pulsar", 0.033f, 45.0f, 1.3f, 1.1f, 1.6f},
+    {"Vela Pulsar", 0.089f, 63.0f, 1.1f, 1.0f, 1.35f},
+    {"Millisecond", 0.005f, 18.0f, 0.9f, 0.85f, 1.2f},
+    {"Magnetar-like", 7.5f, 32.0f, 0.7f, 1.8f, 1.9f}
+};
+
+void applySciencePreset(AppState& app, int presetIndex) {
+    const SciencePreset& preset = kSciencePresets[presetIndex];
+    app.presetIndex = presetIndex;
+    app.spinPeriod = preset.spinPeriod;
+    app.magneticAxisTiltDeg = preset.magneticAxisTiltDeg;
+    app.jetDensity = preset.jetDensity;
+    app.fieldStrength = preset.fieldStrength;
+    app.pulseBrightness = preset.pulseBrightness;
+
+    app.uiSpinPeriod = preset.spinPeriod;
+    app.uiMagneticAxisTiltDeg = preset.magneticAxisTiltDeg;
+    app.uiJetDensity = preset.jetDensity;
+    app.uiFieldStrength = preset.fieldStrength;
+    app.uiPulseBrightness = preset.pulseBrightness;
+    app.syncScienceState();
+}
+
 AppState* getApp(GLFWwindow* window) {
     return static_cast<AppState*>(glfwGetWindowUserPointer(window));
 }
@@ -106,21 +140,27 @@ void keyCB(GLFWwindow* window, int key, int, int action, int) {
             break;
         case GLFW_KEY_EQUAL:
         case GLFW_KEY_KP_ADD:
-            app->uiRotSpeedAbs = glm::clamp(app->uiRotSpeedAbs + 0.02f, 0.01f, 0.3f);
-            app->rotSpeed = -app->uiRotSpeedAbs;
+            app->uiTimeScale = glm::clamp(app->uiTimeScale + 0.1f, 0.25f, 3.0f);
+            app->timeScale = app->uiTimeScale;
+            app->presetIndex = 0;
             break;
         case GLFW_KEY_MINUS:
         case GLFW_KEY_KP_SUBTRACT:
-            app->uiRotSpeedAbs = glm::clamp(app->uiRotSpeedAbs - 0.02f, 0.01f, 0.3f);
-            app->rotSpeed = -app->uiRotSpeedAbs;
+            app->uiTimeScale = glm::clamp(app->uiTimeScale - 0.1f, 0.25f, 3.0f);
+            app->timeScale = app->uiTimeScale;
+            app->presetIndex = 0;
             break;
         case GLFW_KEY_UP:
-            app->uiInclDegrees = glm::clamp(app->uiInclDegrees + 5.0f, 0.0f, 100.0f);
-            app->inclination = glm::radians(app->uiInclDegrees);
+            app->uiMagneticAxisTiltDeg = glm::clamp(app->uiMagneticAxisTiltDeg + 5.0f, 0.0f, 100.0f);
+            app->magneticAxisTiltDeg = app->uiMagneticAxisTiltDeg;
+            app->presetIndex = 0;
+            app->syncScienceState();
             break;
         case GLFW_KEY_DOWN:
-            app->uiInclDegrees = glm::clamp(app->uiInclDegrees - 5.0f, 0.0f, 100.0f);
-            app->inclination = glm::radians(app->uiInclDegrees);
+            app->uiMagneticAxisTiltDeg = glm::clamp(app->uiMagneticAxisTiltDeg - 5.0f, 0.0f, 100.0f);
+            app->magneticAxisTiltDeg = app->uiMagneticAxisTiltDeg;
+            app->presetIndex = 0;
+            app->syncScienceState();
             break;
         default:
             break;
@@ -182,14 +222,53 @@ void drawImGuiPanel(AppState& app) {
                              ImGuiWindowFlags_AlwaysAutoResize;
 
     if (ImGui::Begin("##controls", nullptr, flags)) {
-        ImGui::TextDisabled("Speed:");
+        ImGui::TextDisabled("Playback Rate:");
         ImGui::PushItemWidth(-1);
-        if (ImGui::SliderFloat("##speed", &app.uiRotSpeedAbs, 0.01f, 0.30f, "")) {
-            app.rotSpeed = -app.uiRotSpeedAbs;
+        if (ImGui::SliderFloat("##timescale", &app.uiTimeScale, 0.25f, 3.0f, "%.2fx")) {
+            app.timeScale = app.uiTimeScale;
         }
         ImGui::PopItemWidth();
 
         ImGui::Spacing();
+
+        ImGui::SeparatorText("Science Panel");
+
+        int presetIndex = app.presetIndex;
+        if (ImGui::Combo("Preset", &presetIndex, "Custom\0Crab Pulsar\0Vela Pulsar\0Millisecond\0Magnetar-like\0")) {
+            applySciencePreset(app, presetIndex);
+        }
+
+        if (ImGui::SliderFloat("Spin Period (s)", &app.uiSpinPeriod, 0.005f, 8.0f, "%.3f")) {
+            app.spinPeriod = app.uiSpinPeriod;
+            app.presetIndex = 0;
+        }
+
+        if (ImGui::SliderFloat("Magnetic Axis Tilt", &app.uiMagneticAxisTiltDeg, 0.0f, 100.0f, "%.0f deg")) {
+            app.magneticAxisTiltDeg = app.uiMagneticAxisTiltDeg;
+            app.presetIndex = 0;
+            app.syncScienceState();
+        }
+
+        if (ImGui::SliderFloat("Jet Density", &app.uiJetDensity, 0.25f, 1.5f, "%.2f")) {
+            app.jetDensity = app.uiJetDensity;
+            app.presetIndex = 0;
+        }
+
+        if (ImGui::SliderFloat("Field Strength", &app.uiFieldStrength, 0.4f, 2.0f, "%.2f")) {
+            app.fieldStrength = app.uiFieldStrength;
+            app.presetIndex = 0;
+            app.fieldDirty = true;
+        }
+
+        if (ImGui::SliderFloat("Pulse Brightness", &app.uiPulseBrightness, 0.2f, 2.2f, "%.2f")) {
+            app.pulseBrightness = app.uiPulseBrightness;
+            app.presetIndex = 0;
+        }
+
+        ImGui::TextDisabled("Approx pulse freq: %.2f Hz", 1.0f / app.spinPeriod);
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("Rendering");
 
         ImGui::TextDisabled("Ambient Light:");
         ImGui::PushItemWidth(-1);
@@ -224,20 +303,6 @@ void drawImGuiPanel(AppState& app) {
             app.emissiveStr = app.uiEmissive;
         }
         ImGui::PopItemWidth();
-
-        ImGui::Spacing();
-
-        ImGui::TextDisabled("Inclination:");
-        ImGui::PushItemWidth(-1);
-        if (ImGui::SliderFloat("##incl", &app.uiInclDegrees, 0.0f, 100.0f, "%.0f deg")) {
-            app.inclination = glm::radians(app.uiInclDegrees);
-        }
-        ImGui::PopItemWidth();
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.58f, 0.68f, 1.0f));
-        ImGui::SetWindowFontScale(0.75f);
-        ImGui::Text("0  15  30  45  60  75  90");
-        ImGui::SetWindowFontScale(1.0f);
-        ImGui::PopStyleColor();
 
         ImGui::Separator();
         ImGui::Spacing();
@@ -276,7 +341,7 @@ void drawImGuiPanel(AppState& app) {
         ImGui::Separator();
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.40f, 0.42f, 0.55f, 1.0f));
         ImGui::SetWindowFontScale(0.80f);
-        ImGui::TextWrapped("+/- Speed  Arrows Inclination\nDrag Orbit  Scroll Zoom");
+        ImGui::TextWrapped("+/- Playback  Arrows Tilt\nDrag Orbit  Scroll Zoom");
         ImGui::SetWindowFontScale(1.0f);
         ImGui::PopStyleColor();
     }

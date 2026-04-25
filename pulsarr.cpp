@@ -123,7 +123,7 @@ int main() {
     jet2.init(-1, rng);
 
     pulsar::FieldLines field;
-    field.build();
+    field.build(app.fieldStrength);
     pulsar::Grid grid;
     grid.build(30.0f, 50);
     pulsar::AxisArrows axis;
@@ -141,8 +141,15 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        jet1.setDensity(app.jetDensity);
+        jet2.setDensity(app.jetDensity);
+        if (app.fieldDirty) {
+            field.build(app.fieldStrength);
+            app.fieldDirty = false;
+        }
+
         if (app.rotating) {
-            app.rotY += app.rotSpeed * dt * 60.0f;
+            app.rotY -= glm::two_pi<float>() * dt * app.timeScale / app.spinPeriod;
         }
         if (app.showJets) {
             jet1.update(dt);
@@ -188,7 +195,7 @@ int main() {
         glUniform1f(glGetUniformLocation(pulsarProg, "ambientStrength"), app.ambientStr);
         glUniform1f(glGetUniformLocation(pulsarProg, "specularStrength"), app.specularStr);
         glUniform1f(glGetUniformLocation(pulsarProg, "shininess"), app.shininess);
-        glUniform1f(glGetUniformLocation(pulsarProg, "emissiveStrength"), app.emissiveStr);
+        glUniform1f(glGetUniformLocation(pulsarProg, "emissiveStrength"), app.emissiveStr * app.pulseBrightness);
         glUniform1f(glGetUniformLocation(pulsarProg, "time"), static_cast<float>(now));
         glUniform3fv(glGetUniformLocation(pulsarProg, "viewPos"), 1, glm::value_ptr(camPos));
         glUniform3fv(glGetUniformLocation(pulsarProg, "lightPos"), 1, glm::value_ptr(lightPos));
@@ -204,7 +211,13 @@ int main() {
         glUniformMatrix4fv(glGetUniformLocation(glowProg, "model"), 1, GL_FALSE, glm::value_ptr(pulsarModel));
         glUniformMatrix4fv(glGetUniformLocation(glowProg, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(glowProg, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
-        glUniform4f(glGetUniformLocation(glowProg, "glowColor"), 0.66f, 0.89f, 1.0f, 0.25f);
+        glUniform4f(
+            glGetUniformLocation(glowProg, "glowColor"),
+            0.66f + 0.08f * app.pulseBrightness,
+            0.89f,
+            1.0f,
+            0.18f + 0.10f * app.pulseBrightness
+        );
         glBindVertexArray(glowVao);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(glowIdx.size()), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
