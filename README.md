@@ -54,7 +54,7 @@ g++ pulsarr.cpp src/render_utils.cpp src/scene.cpp src/ui.cpp src/glad.c \
 ### ▶️ Run
 
 ```bash
-./pulsarr
+./pulsar
 ```
 
 ---
