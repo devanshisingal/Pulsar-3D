@@ -4,7 +4,7 @@
    Do this:
       #define STB_IMAGE_IMPLEMENTATION
    before you include this file in *one* C or C++ file to create the implementation.
-
+ 
    // i.e. it should look like this:
    #include ...
    #include ...
